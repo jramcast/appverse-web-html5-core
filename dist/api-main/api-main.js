@@ -87,7 +87,8 @@ run.$inject = ["$log"];
      * Bootstraps the application by integrating services that have any relation.
      */
     angular.module('COMMONAPI', generateDependencies(requires, optional))
-        .config(config);
+        .config(config)
+        .run(run);
 
 
     /**
@@ -96,7 +97,15 @@ run.$inject = ["$log"];
      * Configures the integration between modules that need to be integrated
      * at the config phase.
      */
-    function config($compileProvider, $injector, ModuleSeekerProvider) {
+    function config($compileProvider, $injector, $provide, ModuleSeekerProvider, REST_CONFIG) {
+
+        //Mock backend if necessary
+        if (REST_CONFIG.MockBackend) {
+
+            $provide.decorator('$httpBackend', angular.mock.e2e.$httpBackendDecorator);
+        }
+
+        // sanitize hrefs
         $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|ftp|mailto|itms-services):/);
 
         // Integrate modules that have a dependency
@@ -112,7 +121,14 @@ run.$inject = ["$log"];
 
         }
     }
-    config.$inject = ["$compileProvider", "$injector", "ModuleSeekerProvider"];
+    config.$inject = ["$compileProvider", "$injector", "$provide", "ModuleSeekerProvider", "REST_CONFIG"];
+
+    function run($log, REST_CONFIG) {
+        if (REST_CONFIG.MockBackend) {
+            $log.debug('REST: You are using a MOCKED backend!');
+        }
+    }
+    run.$inject = ["$log", "REST_CONFIG"];
 
     function generateDependencies(requires, optional) {
         var dependencies = requires;
@@ -156,8 +172,10 @@ function ConfigLoaderProvider() {
     //by default, no detection is present
     detection         = new NoDetection();
 
-    this.setDetection = function(detectionProvider) {
-        detection = detectionProvider;
+    this.load = function(settings) {
+        this.loadDefaultConfig()
+            .loadCustomConfig(settings)
+            .overrideDefaultConfig();
     };
 
     this.loadDefaultConfig = function() {
@@ -175,6 +193,8 @@ function ConfigLoaderProvider() {
         this.loadEnvironmentConfig();
         return this;
     };
+
+
 
     this.overrideDefaultConfig = function() {
         angular.forEach(appConfigTemp, function (propertyValue, propertyName) {
@@ -250,7 +270,9 @@ function ConfigLoaderProvider() {
         this.addConfig(jsonData);
     };
 
-
+    this.setDetection = function(detectionProvider) {
+        detection = detectionProvider;
+    };
 
     this.$get = function() {
         return this;
@@ -293,8 +315,10 @@ All data are auto-explained because their names ;)
     Team: 'GFT Appverse Web',
     URL: '',
     LoginViewPath: '/login',
-    myUrl: ''
+    myUrl: '',
+    VendorLibrariesBaseUrl: 'bower_components'
 })
+
 
 /*
 LOGGING MODULE CONFIGURATION
@@ -737,7 +761,16 @@ to keep consistency between config and the module.
     /*
      *
      */
-    DefaultContentType: 'application/json'
+    DefaultContentType: 'application/json',
+
+    /**
+     * If true, it will mock backend $http calls
+     * by decorating the default "real" $http service with a mocked
+     * one from angular-mocks.
+     * (remember to include the  angular-mocks.js script if this option is set to true)
+     * @type {Boolean}
+     */
+    MockBackend: false
 })
 
 .constant('AD_CONFIG', {
@@ -747,6 +780,7 @@ to keep consistency between config and the module.
 
 .constant('I18N_CONFIG', {
     PreferredLocale: 'en-US',
+    LocaleFilePattern: 'angular-i18n/angular-locale_{{locale}}.js',
     DetectLocale: true
 })
 
@@ -933,6 +967,8 @@ var AppInit = AppInit || (function(angular) { 'use strict';
 
     var settings;
 
+    var mainModuleName;
+
     function setConfig(settingsObject) {
         settings = settingsObject;
         angular.module('AppConfigLoader').config(loadConfig);
@@ -940,22 +976,30 @@ var AppInit = AppInit || (function(angular) { 'use strict';
     }
 
     function bootstrap(appMainModule) {
+        var moduleName = appMainModule || mainModuleName;
         angular.element(document).ready(function() {
-            angular.bootstrap(document, [appMainModule]);
+            angular.bootstrap(document, [moduleName]);
         });
     }
 
+    function setMainModuleName(name) {
+        mainModuleName = name;
+    }
+
+    function getMainModule() {
+        return angular.module(mainModuleName);
+    }
+
     function loadConfig(ConfigLoaderProvider) {
-        ConfigLoaderProvider
-            .loadDefaultConfig()
-            .loadCustomConfig(settings)
-            .overrideDefaultConfig();
+        ConfigLoaderProvider.load(settings);
     }
     loadConfig.$inject = ["ConfigLoaderProvider"];
 
     return {
-        setConfig: setConfig,
-        bootstrap: bootstrap
+        setMainModuleName : setMainModuleName,
+        setConfig : setConfig,
+        bootstrap : bootstrap,
+        getMainModule : getMainModule
     };
 
 })(angular);

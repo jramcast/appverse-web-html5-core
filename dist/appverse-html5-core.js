@@ -577,92 +577,7 @@
  * @description
  * Provides browser and network detection.
  */
-angular.module('AppDetection', []);
-
-
-})();
-(function() {
-    'use strict';
-
-    angular.module('AppDetection')
-        .provider('MobileLibrariesLoader', MobileLibrariesLoaderProvider);
-
-    var defaults = [
-        'bower_components/angular-touch/angular-touch.js',
-        'bower_components/angular-animate/angular-animate.js',
-        'bower_components/angular-route/angular-route.js',
-        'angular-jqm.js',
-    ];
-
-    /**
-     * @ngdoc provider
-     * @name AppDetection.provider:MobileLibrariesLoader
-     * @description
-     * Loads libraries targeted at mobile devices
-     */
-    function MobileLibrariesLoaderProvider() {
-
-        /**
-         * Array of script paths to be loaded
-         * @type {[type]}
-         */
-        this.scripts = defaults;
-
-        this.$get = function() {
-            return this;
-        };
-
-
-
-
-        /**
-         * Loads scripts in parallel and executes them in order
-         * using 'async'.
-         * Fallsback to 'readyState' for IE<10
-         */
-        this.load = function() {
-
-            var scripts    = this.scripts,
-            pendingScripts = [],
-            firstScript    = document.scripts[0],
-            src,
-            script;
-
-            var scriptsLenght = scripts.length;
-            for (var i = 0; i < scriptsLenght; i++) {
-                src = scripts[i];
-                if ('async' in firstScript) { // modern browsers
-                    script = document.createElement('script');
-                    script.async = false;
-                    script.src = src;
-                    document.head.appendChild(script);
-                }
-                else if (firstScript.readyState) { // IE<10
-                    // create a script and add it to our todo pile
-                    script = document.createElement('script');
-                    pendingScripts.push(script);
-                    // listen for state changes
-                    script.onreadystatechange = ieStateChange;
-                    // must set src AFTER adding onreadystatechange listener
-                    // else we’ll miss the loaded event for cached scripts
-                    script.src = src;
-                }
-            }
-
-            // Special case to load scripts in order in IE
-            function ieStateChange() {
-                // Execute as many scripts in order as we can
-                var pendingScript;
-                while (pendingScripts[0] && pendingScripts[0].readyState === 'loaded') {
-                    pendingScript = pendingScripts.shift();
-                    // avoid future loading events from this script (eg, if src changes)
-                    pendingScript.onreadystatechange = null;
-                    // can't just appendChild, old IE bug if element isn't closed
-                    firstScript.parentNode.insertBefore(pendingScript, firstScript);
-                }
-            }
-        };
-    }
+angular.module('AppDetection', ['AppUtils']);
 
 
 })();
@@ -722,9 +637,7 @@ angular.module('AppDetection')
  * @description
  * Contains methods for browser and network detection.
  */
-function DetectionProvider (MobileLibrariesLoaderProvider, MobileDetectorProvider) {
-
-    this.mobileLibrariesLoader = MobileLibrariesLoaderProvider;
+function DetectionProvider (MobileDetectorProvider) {
     this.mobileDetector        = MobileDetectorProvider;
     this.bandwidth             = 0;
     this.isPollingBandwidth    = false;
@@ -747,7 +660,7 @@ function DetectionProvider (MobileLibrariesLoaderProvider, MobileDetectorProvide
 
     // Do some initialization
     if (this.hasAppverseMobile() || this.isMobileBrowser()) {
-        this.mobileLibrariesLoader.load();
+        // Do something for mobile...
     } else {
         angular.module('jqm', []);
     }
@@ -834,7 +747,7 @@ function DetectionProvider (MobileLibrariesLoaderProvider, MobileDetectorProvide
         this.isPollingBandwidth = false;
     };
 }
-DetectionProvider.$inject = ["MobileLibrariesLoaderProvider", "MobileDetectorProvider"];
+DetectionProvider.$inject = ["MobileDetectorProvider"];
 
 
 })();
@@ -1210,7 +1123,8 @@ run.$inject = ["$log"];
      * Bootstraps the application by integrating services that have any relation.
      */
     angular.module('COMMONAPI', generateDependencies(requires, optional))
-        .config(config);
+        .config(config)
+        .run(run);
 
 
     /**
@@ -1219,7 +1133,15 @@ run.$inject = ["$log"];
      * Configures the integration between modules that need to be integrated
      * at the config phase.
      */
-    function config($compileProvider, $injector, ModuleSeekerProvider) {
+    function config($compileProvider, $injector, $provide, ModuleSeekerProvider, REST_CONFIG) {
+
+        //Mock backend if necessary
+        if (REST_CONFIG.MockBackend) {
+
+            $provide.decorator('$httpBackend', angular.mock.e2e.$httpBackendDecorator);
+        }
+
+        // sanitize hrefs
         $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|ftp|mailto|itms-services):/);
 
         // Integrate modules that have a dependency
@@ -1235,7 +1157,14 @@ run.$inject = ["$log"];
 
         }
     }
-    config.$inject = ["$compileProvider", "$injector", "ModuleSeekerProvider"];
+    config.$inject = ["$compileProvider", "$injector", "$provide", "ModuleSeekerProvider", "REST_CONFIG"];
+
+    function run($log, REST_CONFIG) {
+        if (REST_CONFIG.MockBackend) {
+            $log.debug('REST: You are using a MOCKED backend!');
+        }
+    }
+    run.$inject = ["$log", "REST_CONFIG"];
 
     function generateDependencies(requires, optional) {
         var dependencies = requires;
@@ -1279,8 +1208,10 @@ function ConfigLoaderProvider() {
     //by default, no detection is present
     detection         = new NoDetection();
 
-    this.setDetection = function(detectionProvider) {
-        detection = detectionProvider;
+    this.load = function(settings) {
+        this.loadDefaultConfig()
+            .loadCustomConfig(settings)
+            .overrideDefaultConfig();
     };
 
     this.loadDefaultConfig = function() {
@@ -1298,6 +1229,8 @@ function ConfigLoaderProvider() {
         this.loadEnvironmentConfig();
         return this;
     };
+
+
 
     this.overrideDefaultConfig = function() {
         angular.forEach(appConfigTemp, function (propertyValue, propertyName) {
@@ -1373,7 +1306,9 @@ function ConfigLoaderProvider() {
         this.addConfig(jsonData);
     };
 
-
+    this.setDetection = function(detectionProvider) {
+        detection = detectionProvider;
+    };
 
     this.$get = function() {
         return this;
@@ -1416,8 +1351,10 @@ All data are auto-explained because their names ;)
     Team: 'GFT Appverse Web',
     URL: '',
     LoginViewPath: '/login',
-    myUrl: ''
+    myUrl: '',
+    VendorLibrariesBaseUrl: 'bower_components'
 })
+
 
 /*
 LOGGING MODULE CONFIGURATION
@@ -1860,7 +1797,16 @@ to keep consistency between config and the module.
     /*
      *
      */
-    DefaultContentType: 'application/json'
+    DefaultContentType: 'application/json',
+
+    /**
+     * If true, it will mock backend $http calls
+     * by decorating the default "real" $http service with a mocked
+     * one from angular-mocks.
+     * (remember to include the  angular-mocks.js script if this option is set to true)
+     * @type {Boolean}
+     */
+    MockBackend: false
 })
 
 .constant('AD_CONFIG', {
@@ -1870,6 +1816,7 @@ to keep consistency between config and the module.
 
 .constant('I18N_CONFIG', {
     PreferredLocale: 'en-US',
+    LocaleFilePattern: 'angular-i18n/angular-locale_{{locale}}.js',
     DetectLocale: true
 })
 
@@ -2056,6 +2003,8 @@ var AppInit = AppInit || (function(angular) { 'use strict';
 
     var settings;
 
+    var mainModuleName;
+
     function setConfig(settingsObject) {
         settings = settingsObject;
         angular.module('AppConfigLoader').config(loadConfig);
@@ -2063,22 +2012,30 @@ var AppInit = AppInit || (function(angular) { 'use strict';
     }
 
     function bootstrap(appMainModule) {
+        var moduleName = appMainModule || mainModuleName;
         angular.element(document).ready(function() {
-            angular.bootstrap(document, [appMainModule]);
+            angular.bootstrap(document, [moduleName]);
         });
     }
 
+    function setMainModuleName(name) {
+        mainModuleName = name;
+    }
+
+    function getMainModule() {
+        return angular.module(mainModuleName);
+    }
+
     function loadConfig(ConfigLoaderProvider) {
-        ConfigLoaderProvider
-            .loadDefaultConfig()
-            .loadCustomConfig(settings)
-            .overrideDefaultConfig();
+        ConfigLoaderProvider.load(settings);
     }
     loadConfig.$inject = ["ConfigLoaderProvider"];
 
     return {
-        setConfig: setConfig,
-        bootstrap: bootstrap
+        setMainModuleName : setMainModuleName,
+        setConfig : setConfig,
+        bootstrap : bootstrap,
+        getMainModule : getMainModule
     };
 
 })(angular);
@@ -2103,7 +2060,7 @@ var AppInit = AppInit || (function(angular) { 'use strict';
     run.$inject = ["$log"];
 
 })();
-(function() {
+(function () {
     'use strict';
 
     angular.module('AppPerformance')
@@ -2146,12 +2103,9 @@ var AppInit = AppInit || (function(angular) { 'use strict';
                 },
                 priority: 1000,
                 terminal: true,
-                compile: function(element, attr, linker) {
-
-                },
+                compile: function () {},
                 link: function postLink(scope, element, attrs) {
                     var workerid = attrs.id;
-                    var passedMessage = attrs.message;
                     var template = attrs.template;
 
                     scope.$watch(function () {
@@ -2168,17 +2122,17 @@ var AppInit = AppInit || (function(angular) { 'use strict';
                     });
 
 
-    //                    scope.$watch(function () {
-    //                        return CacheFactory.getScopeCache().get(name);
-    //                    }, function (newVal) {
-    //                        $log.debug('Cache watch {' + name + '}:', newVal);
-    //                        scope[name] = CacheFactory.getScopeCache().get(name);
-    //                    });
-    //
-    //                    scope.$watch(name, function (newVal) {
-    //                        $log.debug('Cache watch {' + name + '}:', newVal);
-    //                        CacheFactory.getScopeCache().put(name, scope[name]);
-    //                    });
+                    //                    scope.$watch(function () {
+                    //                        return CacheFactory.getScopeCache().get(name);
+                    //                    }, function (newVal) {
+                    //                        $log.debug('Cache watch {' + name + '}:', newVal);
+                    //                        scope[name] = CacheFactory.getScopeCache().get(name);
+                    //                    });
+                    //
+                    //                    scope.$watch(name, function (newVal) {
+                    //                        $log.debug('Cache watch {' + name + '}:', newVal);
+                    //                        CacheFactory.getScopeCache().put(name, scope[name]);
+                    //                    });
 
 
 
@@ -2215,27 +2169,23 @@ var AppInit = AppInit || (function(angular) { 'use strict';
                      * template and produces a template function, which can then be used to link scope and
                      * the template together.
                      */
-                    function compileTemplate() {
+                    function compileTemplate($http, $templateCache, $compile) {
                         $http.get(scope.template, {
-                            //This allows you can get the template again by consuming the
-                            //$templateCache service directly.
-                            cache: $templateCache
-                        })
+                                //This allows you can get the template again by consuming the
+                                //$templateCache service directly.
+                                cache: $templateCache
+                            })
                             .success(function (html) {
                                 element.html(html);
                                 $compile(element.contents())(scope);
                             });
                     }
-
-
-                    $scope.$on('$destroy', function(event) {
-
-                    });
                 }
             };
         }]);
 
 })();
+
 (function() {
     'use strict';
 
@@ -3545,7 +3495,7 @@ var AppInit = AppInit || (function(angular) { 'use strict';
             prefix: 'resources/i18n/',
             suffix: '.json'
         };
-        var locationPattern = 'resources/i18n/angular/angular-locale_{{locale}}.js';
+        var locationPattern = I18N_CONFIG.LocaleFilePattern;
 
         $translateProvider.useStaticFilesLoader(filesConfig);
         $translateProvider.preferredLanguage(I18N_CONFIG.PreferredLocale);
@@ -3635,6 +3585,73 @@ var AppInit = AppInit || (function(angular) { 'use strict';
     angular.module('AppUtils', ['AppConfiguration']);
 
 })();
+(function (angular) {
+    'use strict';
+
+    angular.module('AppUtils')
+        .provider('BaseUrlSetter', BaseUrlSetterProvider);
+
+    function BaseUrlSetterProvider() {
+        this.$get = function () {
+            return this;
+        };
+
+        this.setBasePath = function (basePath) {
+            return new BaseUrlSetter(basePath);
+        };
+    }
+
+    /**
+     * @ngdoc service
+     * @name BaseUrlSetter
+     * @module AppUtils
+     * @description
+     * Preprends a url with a base path
+     */
+    function BaseUrlSetter(basePath) {
+
+        basePath = basePath || '';
+
+        basePath = basePath.trim(basePath);
+
+        this.$get = function () {
+            return this;
+        };
+
+        this.inUrl = function (url) {
+            url = url.trim(url);
+            if (endsWithSlash(basePath)) {
+                basePath = sliceLastChar(basePath);
+            }
+            if (startsWithSlash(url)) {
+                url = sliceFirstChar(url);
+            }
+            return basePath + '/' + url;
+        };
+
+        function endsWithSlash(path) {
+            return (path.slice(-1) === '/');
+        }
+
+        function startsWithSlash(path) {
+            return (path.slice(0, 1) === '/');
+        }
+
+        function sliceLastChar(path) {
+            return path.slice(0, -1);
+        }
+
+        function sliceFirstChar(path) {
+            return path.slice(1);
+        }
+    }
+
+
+
+
+
+})(angular);
+
 (function(angular) {
     'use strict';
 

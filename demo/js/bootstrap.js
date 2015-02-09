@@ -17,145 +17,13 @@
 */
 AppInit.setConfig({
 
-    // Settings to use when Appverse Mobile is loaded
-    appverseMobile: {
-        "LOGGING_CONFIG": {
-            "ServerEnabled": false,
-            "EnabledLogLevel": true,
-            "EnabledErrorLevel": true,
-            "EnabledDebugLevel": false,
-            "EnabledWarnLevel": true,
-            "EnabledInfoLevel": true,
-            "LogDateTimeFormat": "%Y-%M-%d %h:%m:%s:%z",
-            "LogTextFormat": ""
-        },
-        "CACHE_CONFIG": {
-            "ScopeCache_duration": 10000,
-            "ScopeCache_capacity": 10,
-            "BrowserStorageCache_Enabled": true,
-            "BrowserStorage_type": "2",
-            "HttpCache_Enabled": true,
-            "HttpCache_duration": 20000,
-            "HttpCache_capacity": 10,
-            "IndexedDBCache_Enabled": false
-        },
-        "SERVERPUSH_CONFIG": {
-            "BaseUrl": "http://localhost:3000",
-            "ListenedPort": "3000",
-            "Resource": "socket.io",
-            "ConnectTimeout": "10000",
-            "TryMultipleTransports": true,
-            "Reconnect": true,
-            "ReconnectionDelay": 1000,
-            "ReconnectionLimit": "Infinity",
-            "MaxReconnectionAttempts": 5,
-            "SyncDisconnectOnUnload": false,
-            "AutoConnect": true,
-            "FlashPolicyPort": "",
-            "ForceNewConnection": false
-        },
-        "REST_CONFIG": {
-            "BaseUrl": "/",
-            "ExtraFields": [],
-            "ParentLess": false,
-            "NoCacheHttpMethods": {
-                "get": false,
-                "post": true,
-                "put": false,
-                "delete": true,
-                "option": false
-            },
-            "ElementTransformer": [],
-            "RequestInterceptor": null,
-            "FullRequestInterceptor": null,
-            "RestangularFields": {
-                "id": "id",
-                "route": "route"
-            },
-            "MethodOverriders": [],
-            "DefaultRequestParams": {},
-            "FullResponse": false,
-            "DefaultHeaders": {},
-            "RequestSuffix": ".json",
-            "UseCannonicalId": false,
-            "EncodeIds": true
-        },
-        "AD_CONFIG": {
-            "ConsumerKey": "",
-            "ConsumerSecret": ""
-        },
-        "I18N_CONFIG": {
-            "PreferredLocale": "en-GB",
-            "DetectLocale": true
-        }
-    },
-
-    //Settings to use when mobile browser is detected
-    mobileBrowser: {
-        "LOGGING_CONFIG": {
-            "ServerEnabled": false,
-            "EnabledLogLevel": true,
-            "EnabledErrorLevel": true,
-            "EnabledDebugLevel": false,
-            "EnabledWarnLevel": true,
-            "EnabledInfoLevel": true
-        },
-        "CACHE_CONFIG": {
-            "ScopeCache_duration": 10000,
-            "ScopeCache_capacity": 10,
-            "BrowserStorageCache_Enabled": true,
-            "BrowserStorage_type": "2",
-            "HttpCache_Enabled": true,
-            "HttpCache_duration": 20000,
-            "HttpCache_capacity": 10,
-            "IndexedDBCache_Enabled": false
-        },
-        "SERVERPUSH_CONFIG": {
-            "BaseUrl": "http://localhost:3000",
-            "ListenedPort": "3000",
-            "Resource": "socket.io",
-            "ConnectTimeout": "10000",
-            "TryMultipleTransports": true,
-            "Reconnect": true,
-            "ReconnectionDelay": 1000,
-            "ReconnectionLimit": "Infinity",
-            "MaxReconnectionAttempts": 5,
-            "SyncDisconnectOnUnload": false,
-            "AutoConnect": true,
-            "FlashPolicyPort": "",
-            "ForceNewConnection": false
-        },
-        "REST_CONFIG": {
-            "BaseUrl": "/",
-            "ExtraFields": [],
-            "ParentLess": false,
-            "NoCacheHttpMethods": {
-                "get": false,
-                "post": true,
-                "put": false,
-                "delete": true,
-                "option": false
-            },
-            "ElementTransformer": [],
-            "RequestInterceptor": null,
-            "FullRequestInterceptor": null,
-            "RestangularFields": {
-                "id": "id",
-                "route": "route"
-            },
-            "MethodOverriders": [],
-            "DefaultRequestParams": {},
-            "FullResponse": false,
-            "DefaultHeaders": {},
-            "RequestSuffix": ".json",
-            "UseCannonicalId": false,
-            "EncodeIds": true
-        }
-    },
-
     // Application general environment
     // Overrides defaults and mobile settings
     environment: {
+
+        "PROJECT_DATA" : {
+            "VendorLibrariesBaseUrl": '/',
+        },
         "LOGGING_CONFIG": {
             "ServerEnabled": false,
             "EnabledLogLevel": true,
@@ -215,7 +83,7 @@ AppInit.setConfig({
             "WS_SUPPORTED": "HTML5 Websockets specification is supported in this browser."
         },
         "REST_CONFIG": {
-            "BaseUrl": "/",
+            "BaseUrl": "api",
             "ExtraFields": [],
             "ParentLess": false,
             "NoCacheHttpMethods": {
@@ -238,9 +106,46 @@ AppInit.setConfig({
             "DefaultHeaders": {},
             "RequestSuffix": ".json",
             "UseCannonicalId": false,
-            "EncodeIds": true
+            "EncodeIds": true,
+            "MockBackend" : false
         }
+    },
+
+    // Settings to use when Appverse Mobile is loaded
+    // Will override environment values
+    appverseMobile: {
+
+    },
+
+    //Settings to use when mobile browser is detected
+    // Will override environment values
+    mobileBrowser: {
+
     }
+});
+
+/*
+|--------------------------------------------------------------------------
+| App name
+|--------------------------------------------------------------------------
+| The name of the main module of the app. If using autobootstrap
+| remember to include ng-app="demoApp" in your html
+|
+*/
+AppInit.setMainModuleName('demoApp');
+
+
+/*
+|--------------------------------------------------------------------------
+| App Run block
+|--------------------------------------------------------------------------
+| Perform initializations app services here.
+|
+| If using mocked backend, define httpBackend mocks here...
+|
+*/
+AppInit.getMainModule().run(function() {
+
 });
 
 
@@ -257,5 +162,12 @@ AppInit.setConfig({
 | More info: https://docs.angularjs.org/guide/bootstrap
 |
 */
-AppInit.bootstrap('demoApp');
+AppInit.bootstrap();
+
+
+
+
+
+
+
 

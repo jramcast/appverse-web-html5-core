@@ -36,8 +36,8 @@ Appverse Web Client Side  core module based on HTML5 and Java Script
     <script src="bower_components/jquery-flot/jquery.flot.time.js"></script>
 
     <!-- uibootstrap -->
-    <script src="bower_components/bootstrap-sass/js/transition.js"></script>
-    <script src="bower_components/bootstrap-sass/js/collapse.js"></script>
+    <script src="bower_components/bootstrap-sass-official/vendor/assets/javascripts/bootstrap/transition.js"></script>
+    <script src="bower_components/bootstrap-sass-official/vendor/assets/javascripts/bootstrap/collapse.js"></script>
     <script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
 
     <!-- modules -->
@@ -92,7 +92,15 @@ Appverse Web Client Side  core module based on HTML5 and Java Script
     <!-- endbuild -->    
 ```
 
+
 * Add the `appverse-web-html5-core` module to your Angular module list (e.g. in a main app.js file: `angular.module('yourMainModule',['COMMONAPI'])`)
+
+* On your main.scss file add the following line on the begining of the dile
+
+```scss
+@import '../bower_components/bootstrap-sass-official/vendor/assets/stylesheets/bootstrap';
+```
+
 
 
 ## License
